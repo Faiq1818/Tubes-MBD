@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
 	"sync"
+
+	"github.com/segmentio/kafka-go"
 )
 
 var bufferPool = sync.Pool{
@@ -29,6 +32,16 @@ func response(conn *net.UDPConn, addr *net.UDPAddr, data []byte) {
 }
 
 func main() {
+	// kafka connection setup
+	writer := &kafka.Writer{
+		Addr:                   kafka.TCP("localhost:9092"),
+		Topic:                  "user-events",
+		Balancer:               &kafka.LeastBytes{},
+		Async:                  false,
+		AllowAutoTopicCreation: true,
+	}
+	defer writer.Close()
+
 	addr, err := net.ResolveUDPAddr("udp", ":9999")
 	if err != nil {
 		fmt.Println("Error resolving address:", err)
@@ -60,7 +73,19 @@ func main() {
 			defer bufferPool.Put(originalBuf)
 			response(conn, addr, payload)
 
-		}(remoteAddr, buf[:n], bufPtr)
+			// kafka send
+			err := writer.WriteMessages(context.Background(),
+				kafka.Message{
+					Value: payload,
+				},
+			)
+			if err != nil {
+				fmt.Println("Error writing to Kafka:", err)
+			} else {
+				fmt.Println("Message successfully persisted to Kafka")
+			}
+
+		}(remoteAddr, append([]byte(nil), buf[:n]...), bufPtr)
 
 	}
 
