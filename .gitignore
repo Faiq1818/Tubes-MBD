@@ -1,1 +1,13 @@
 .env
+
+main
+
+# binaries
+/bin
+*.exe
+*.out
+*.test
+
+# build
+dist/
+build/
