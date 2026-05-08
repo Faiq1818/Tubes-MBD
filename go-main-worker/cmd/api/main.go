@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -9,12 +10,36 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	"github.com/segmentio/kafka-go"
 )
 
 func main() {
+	err := godotenv.Load()
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// db postgres setup
+	connStr := os.Getenv("DATABASE_URL_CLIENT")
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		fmt.Println("Database open failed", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			fmt.Println("Failed to close database", "error", err)
+		}
+	}()
+
+	err = db.PingContext(context.Background())
+	if err != nil {
+		fmt.Println("Database ping failed", "error", err)
+		os.Exit(1)
+	}
 
 	// kafka reader
 	go func() {
@@ -57,10 +82,10 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
+	err = server.Shutdown(ctx)
+	if err != nil {
 		fmt.Printf("Server forced to shutdown: %v\n", err)
 	}
 
 	fmt.Println("Service exited.")
-
 }
