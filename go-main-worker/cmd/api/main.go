@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,9 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"faiqmain.com/internal"
+	"faiqmain.com/internal/database"
+	"faiqmain.com/internal/server"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"github.com/segmentio/kafka-go"
 )
 
 func main() {
@@ -23,52 +24,26 @@ func main() {
 
 	// db postgres setup
 	connStr := os.Getenv("DATABASE_URL_CLIENT")
-	db, err := sql.Open("postgres", connStr)
+	db, err := database.NewPostgresConnection(connStr)
 	if err != nil {
-		fmt.Println("Database open failed", "error", err)
+		fmt.Printf("Database initialization failed: %v\n", err)
 		os.Exit(1)
 	}
 	defer func() {
-		err := db.Close()
-		if err != nil {
-			fmt.Println("Failed to close database", "error", err)
+		if err := db.Close(); err != nil {
+			fmt.Printf("Failed to close database: %v\n", err)
 		}
 	}()
-
-	err = db.PingContext(context.Background())
-	if err != nil {
-		fmt.Println("Database ping failed", "error", err)
-		os.Exit(1)
-	}
 
 	// kafka reader
-	go func() {
-		reader := kafka.NewReader(kafka.ReaderConfig{
-			Brokers: []string{"localhost:9092"},
-			Topic:   "user-events",
-			GroupID: "my-service-group",
-		})
-		defer reader.Close()
-
-		for {
-
-			m, err := reader.ReadMessage(context.Background())
-			if err != nil {
-				fmt.Printf("Kafka Error: %v\n", err)
-				return
-			}
-			fmt.Printf("Kafka received: %s\n", string(m.Value))
-
-		}
-	}()
+	go internal.KafkaReader()
 
 	// http server
-	server := &http.Server{Addr: ":8000"}
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
-
+	mux := server.Setup(db)
+	server := &http.Server{
+		Addr:    ":8000",
+		Handler: mux,
+	}
 	go func() {
 		fmt.Println("HTTP Server starting on :8000...")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
