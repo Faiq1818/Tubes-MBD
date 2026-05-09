@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS earthquake_event;
+DROP TABLE IF EXISTS sensors;
+DROP TABLE IF EXISTS stations;
