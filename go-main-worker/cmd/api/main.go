@@ -36,7 +36,10 @@ func main() {
 	}()
 
 	// kafka reader
-	go internal.KafkaReader()
+	rootCtx, cancelRoot := context.WithCancel(context.Background())
+	defer cancelRoot()
+
+	go internal.KafkaReader(rootCtx, db)
 
 	// http server
 	mux := server.Setup(db)
@@ -53,6 +56,8 @@ func main() {
 
 	<-sigChan
 	fmt.Println("\nShutting down gracefully...")
+
+	cancelRoot()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
