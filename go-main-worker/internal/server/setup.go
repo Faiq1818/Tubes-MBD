@@ -7,12 +7,9 @@ import (
 
 func Setup(db *sql.DB) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("GET /health", healthHandler)
+	mux.HandleFunc("GET /all-sensor-readings", GetAllSensorReadings(db))
+	mux.HandleFunc("GET /one-sensor-readings/{sensor_id}", GetOneSensorReadings(db))
 
 	return mux
-}
-
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
 }
