@@ -17,12 +17,12 @@ func NewPostgresConnection(connStr string) (*sql.DB, error) {
 	db.SetMaxIdleConns(25)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
-	defer func() {
-		err := db.Close()
-		if err != nil {
-			fmt.Println("Failed to close database", "error", err)
-		}
-	}()
+	// defer func() {
+	// 	err := db.Close()
+	// 	if err != nil {
+	// 		fmt.Println("Failed to close database", "error", err)
+	// 	}
+	// }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -31,6 +31,8 @@ func NewPostgresConnection(connStr string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error pinging database: %w", err)
 	}
+
+	fmt.Println("Successfully setup database")
 
 	return db, nil
 }
