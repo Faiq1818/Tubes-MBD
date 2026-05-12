@@ -23,8 +23,8 @@ type DeviceEvent struct {
 
 func KafkaReader(ctx context.Context, db *sql.DB) {
 	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:     []string{"localhost:9092"},
-		Topic:       "user-events",
+		Brokers: []string{"localhost:9092"},
+		Topic:   "user-events",
 		// StartOffset: kafka.FirstOffset,
 		GroupID: "my-service-group",
 	})

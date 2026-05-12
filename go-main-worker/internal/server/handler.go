@@ -20,8 +20,8 @@ type SensorReading struct {
 	AccX       float64   `json:"acc_x"`
 	AccY       float64   `json:"acc_y"`
 	AccZ       float64   `json:"acc_z"`
-	PGA        *float64  `json:"pga"`     // Pointer untuk menangani NULL
-	STALTA     *float64  `json:"sta_lta"` // Pointer untuk menangani NULL
+	PGA        *float64  `json:"pga"`
+	STALTA     *float64  `json:"sta_lta"`
 	IsTrigger  bool      `json:"is_trigger"`
 	CreatedAt  time.Time `json:"created_at"`
 }
@@ -44,7 +44,6 @@ func GetAllSensorReadings(db *sql.DB) http.HandlerFunc {
 
 		for rows.Next() {
 			var s SensorReading
-			// Urutan Scan HARUS sama dengan urutan SELECT pada query di atas
 			err := rows.Scan(
 				&s.ID,
 				&s.SensorID,
@@ -64,7 +63,6 @@ func GetAllSensorReadings(db *sql.DB) http.HandlerFunc {
 			readings = append(readings, s)
 		}
 
-		// Cek error setelah iterasi selesai
 		if err = rows.Err(); err != nil {
 			http.Error(w, "Rows error: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -73,7 +71,6 @@ func GetAllSensorReadings(db *sql.DB) http.HandlerFunc {
 		duration := time.Since(start)
 		fmt.Printf("Query execution time: %v\n", duration)
 
-		// Mengirimkan response dalam format JSON
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(readings); err != nil {
@@ -110,7 +107,6 @@ func GetOneSensorReadings(db *sql.DB) http.HandlerFunc {
 
 		for rows.Next() {
 			var s SensorReading
-			// Urutan Scan HARUS sama dengan urutan SELECT pada query di atas
 			err := rows.Scan(
 				&s.ID,
 				&s.SensorID,
@@ -130,7 +126,6 @@ func GetOneSensorReadings(db *sql.DB) http.HandlerFunc {
 			readings = append(readings, s)
 		}
 
-		// Cek error setelah iterasi selesai
 		if err = rows.Err(); err != nil {
 			http.Error(w, "Rows error: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -139,7 +134,6 @@ func GetOneSensorReadings(db *sql.DB) http.HandlerFunc {
 		duration := time.Since(start)
 		fmt.Printf("Query execution time: %v\n", duration)
 
-		// Mengirimkan response dalam format JSON
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(readings); err != nil {
