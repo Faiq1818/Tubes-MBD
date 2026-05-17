@@ -12,6 +12,8 @@ func Setup(db *sql.DB) http.Handler {
 	mux.HandleFunc("GET /one-sensor-readings/{sensor_id}", GetOneSensorReadings(db))
 	mux.HandleFunc("GET /sensor-readings-join-optimized", GetOptimizedSensorReadingsJoin(db))
 	mux.HandleFunc("GET /sensor-readings-join-unoptimized", GetUnoptimizedSensorReadingsJoin(db))
+	mux.HandleFunc("GET /sensor-readings-n-plus-one", GetNPlusOneSensorReadings(db))
+	mux.HandleFunc("GET /sensor-readings-no-n-plus-one", GetNoNPlusOneSensorReadings(db))
 
 	return mux
 }

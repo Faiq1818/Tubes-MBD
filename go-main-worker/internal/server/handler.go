@@ -84,6 +84,36 @@ func unoptimizedSensorReadingJoinQuery() string {
 	LIMIT 1000`
 }
 
+func nPlusOneSensorReadingsQuery() string {
+	return `SELECT
+		id,
+		sensor_id,
+		recorded_at,
+		acc_x,
+		acc_y,
+		acc_z,
+		pga,
+		sta_lta,
+		is_trigger,
+		created_at
+	FROM sensor_readings
+	ORDER BY recorded_at DESC
+	LIMIT 1000`
+}
+
+func nPlusOneSensorQuery() string {
+	return `SELECT
+		model_name,
+		sampling_rate,
+		sensitivity_threshold
+	FROM sensors
+	WHERE id = $1`
+}
+
+func noNPlusOneSensorReadingsQuery() string {
+	return optimizedSensorReadingJoinQuery()
+}
+
 func GetAllSensorReadings(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -143,6 +173,71 @@ func GetOptimizedSensorReadingsJoin(db *sql.DB) http.HandlerFunc {
 
 func GetUnoptimizedSensorReadingsJoin(db *sql.DB) http.HandlerFunc {
 	return getSensorReadingsJoin(db, unoptimizedSensorReadingJoinQuery(), "Unoptimized join query execution time")
+}
+
+func GetNPlusOneSensorReadings(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		rows, err := db.Query(nPlusOneSensorReadingsQuery())
+		if err != nil {
+			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		readings := make([]SensorReadingWithSensor, 0)
+
+		for rows.Next() {
+			var s SensorReadingWithSensor
+			err := rows.Scan(
+				&s.ReadingID,
+				&s.SensorID,
+				&s.RecordedAt,
+				&s.AccX,
+				&s.AccY,
+				&s.AccZ,
+				&s.PGA,
+				&s.STALTA,
+				&s.IsTrigger,
+				&s.CreatedAt,
+			)
+			if err != nil {
+				http.Error(w, "Scan error: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			err = db.QueryRow(nPlusOneSensorQuery(), s.SensorID).Scan(
+				&s.SensorModelName,
+				&s.SamplingRate,
+				&s.SensitivityThreshold,
+			)
+			if err != nil {
+				http.Error(w, "Sensor lookup error: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			readings = append(readings, s)
+		}
+
+		if err = rows.Err(); err != nil {
+			http.Error(w, "Rows error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		duration := time.Since(start)
+		fmt.Printf("N+1 query execution time: %v\n", duration)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(readings); err != nil {
+			fmt.Println("Encoding error:", err)
+		}
+	}
+}
+
+func GetNoNPlusOneSensorReadings(db *sql.DB) http.HandlerFunc {
+	return getSensorReadingsJoin(db, noNPlusOneSensorReadingsQuery(), "No N+1 query execution time")
 }
 
 func getSensorReadingsJoin(db *sql.DB, query string, logLabel string) http.HandlerFunc {
